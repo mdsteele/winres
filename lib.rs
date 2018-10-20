@@ -369,7 +369,8 @@ impl WindowsResource {
         writeln!(f, "{{\nBLOCK \"{:04x}04b0\"\n{{", self.language)?;
         for (k, v) in self.properties.iter() {
             if !v.is_empty() {
-                writeln!(f, "VALUE \"{}\", \"{}\"", k, v)?;
+                writeln!(f, "VALUE \"{}\", \"{}\"",
+                         escape_string(k), escape_string(v))?;
             }
         }
         writeln!(f, "}}\n}}")?;
@@ -377,8 +378,8 @@ impl WindowsResource {
         writeln!(f, "BLOCK \"VarFileInfo\" {{")?;
         writeln!(f, "VALUE \"Translation\", {:#x}, 0x04b0", self.language)?;
         writeln!(f, "}}\n}}")?;
-        if self.icon.is_some() {
-            writeln!(f, "1 ICON \"{}\"", self.icon.as_ref().unwrap())?;
+        if let Some(ref icon) = self.icon {
+            writeln!(f, "1 ICON \"{}\"", escape_string(icon))?;
         }
         if let Some(e) = self.version_info.get(&VersionInfo::FILETYPE) {
             if let Some(manf) = self.manifest.as_ref() {
@@ -531,7 +532,7 @@ fn get_sdk() -> io::Result<Vec<PathBuf>> {
                 .skip(line.find("REG_SZ").unwrap() + 6)
                 .skip_while(|c| c.is_whitespace())
                 .collect();
-            
+
             let p = PathBuf::from(&kit);
             let rc = if cfg!(target_arch = "x86_64") {
                 p.join(r"bin\x64\rc.exe")
@@ -596,4 +597,8 @@ fn parse_cargo_toml(props: &mut HashMap<String, String>) -> io::Result<()> {
         println!("TOML parsing error")
     }
     Ok(())
+}
+
+fn escape_string(string: &str) -> String {
+    string.chars().flat_map(|c| c.escape_default()).collect()
 }
